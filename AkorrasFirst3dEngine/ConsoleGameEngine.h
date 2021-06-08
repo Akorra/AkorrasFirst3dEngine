@@ -837,7 +837,7 @@ private:
 
 				// Update Title & Present Screen Buffer
 				wchar_t s[256];
-				swprintf_s(s, 256, L"OneLoneCoder.com - Console Game Engine - %s - FPS: %3.2f", m_sAppName.c_str(), 1.0f / fElapsedTime);
+				swprintf_s(s, 256, L"Akorra - Console Game Engine - %s - FPS: %3.2f", m_sAppName.c_str(), 1.0f / fElapsedTime);
 				SetConsoleTitle(s);
 				WriteConsoleOutput(m_hConsole, m_bufScreen, { (short)m_nScreenWidth, (short)m_nScreenHeight }, { 0,0 }, &m_rectWindow);
 			}
@@ -1290,8 +1290,3 @@ protected:
 	static std::condition_variable m_cvGameFinished;
 	static std::mutex m_muxGame;
 };
-
-// Define our static variables
-std::atomic<bool> ConsoleGameEngine::m_bAtomActive(false);
-std::condition_variable ConsoleGameEngine::m_cvGameFinished;
-std::mutex ConsoleGameEngine::m_muxGame;
