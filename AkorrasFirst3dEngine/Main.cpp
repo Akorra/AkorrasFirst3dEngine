@@ -32,6 +32,8 @@ private:
 	mesh	meshCube;
 	mat4x4	matProj;
 
+	vec3d	vCamera;
+
 	float	fTheta;
 
 	void MultiplyMatrixVector(const vec3d& i, vec3d& o, const mat4x4& m)
@@ -154,7 +156,10 @@ public:
 			float l = sqrtf(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
 			normal.x /= l; normal.y /= l; normal.z /= l;
 
-			if (normal.z < 0)
+			//if (normal.z < 0)
+			if( (normal.x * (triTranslated.p[0].x) - vCamera.x) + 
+				(normal.y * (triTranslated.p[0].y) - vCamera.y) +
+				(normal.z * (triTranslated.p[0].z) - vCamera.z) < 0.0f )
 			{
 
 				MultiplyMatrixVector(triTranslated.p[0], triProjected.p[0], matProj);
