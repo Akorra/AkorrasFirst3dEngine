@@ -138,26 +138,46 @@ public:
 			triTranslated.p[1].z = triRotatedZX.p[1].z + 3.0f;
 			triTranslated.p[2].z = triRotatedZX.p[2].z + 3.0f;
 
-			MultiplyMatrixVector(triTranslated.p[0], triProjected.p[0], matProj);
-			MultiplyMatrixVector(triTranslated.p[1], triProjected.p[1], matProj);
-			MultiplyMatrixVector(triTranslated.p[2], triProjected.p[2], matProj);
+			vec3d normal, line1, line2;
+			line1.x = triTranslated.p[1].x - triTranslated.p[0].x;
+			line1.y = triTranslated.p[1].y - triTranslated.p[0].y;
+			line1.z = triTranslated.p[1].z - triTranslated.p[0].z;
 
-			//Scale into View
-			triProjected.p[0].x += 1.0f; triProjected.p[0].y += 1;
-			triProjected.p[1].x += 1.0f; triProjected.p[1].y += 1;
-			triProjected.p[2].x += 1.0f; triProjected.p[2].y += 1;
+			line2.x = triTranslated.p[2].x - triTranslated.p[0].x;
+			line2.y = triTranslated.p[2].y - triTranslated.p[0].y;
+			line2.z = triTranslated.p[2].z - triTranslated.p[0].z;
 
-			triProjected.p[0].x *= 0.5f * (float)ScreenWidth();
-			triProjected.p[0].y *= 0.5f * (float)ScreenHeight();
-			triProjected.p[1].x *= 0.5f * (float)ScreenWidth();
-			triProjected.p[1].y *= 0.5f * (float)ScreenHeight();
-			triProjected.p[2].x *= 0.5f * (float)ScreenWidth();
-			triProjected.p[2].y *= 0.5f * (float)ScreenHeight();
+			normal.x = line1.y * line2.z - line1.z * line2.y;
+			normal.y = line1.z * line2.x - line1.x * line2.z;
+			normal.z = line1.x * line2.y - line1.y * line2.x;
 
-			DrawTriangle(triProjected.p[0].x, triProjected.p[0].y,
-				triProjected.p[1].x, triProjected.p[1].y,
-				triProjected.p[2].x, triProjected.p[2].y,
-				PIXEL_SOLID, FG_WHITE);
+			float l = sqrtf(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
+			normal.x /= l; normal.y /= l; normal.z /= l;
+
+			if (normal.z < 0)
+			{
+
+				MultiplyMatrixVector(triTranslated.p[0], triProjected.p[0], matProj);
+				MultiplyMatrixVector(triTranslated.p[1], triProjected.p[1], matProj);
+				MultiplyMatrixVector(triTranslated.p[2], triProjected.p[2], matProj);
+
+				//Scale into View
+				triProjected.p[0].x += 1.0f; triProjected.p[0].y += 1;
+				triProjected.p[1].x += 1.0f; triProjected.p[1].y += 1;
+				triProjected.p[2].x += 1.0f; triProjected.p[2].y += 1;
+
+				triProjected.p[0].x *= 0.5f * (float)ScreenWidth();
+				triProjected.p[0].y *= 0.5f * (float)ScreenHeight();
+				triProjected.p[1].x *= 0.5f * (float)ScreenWidth();
+				triProjected.p[1].y *= 0.5f * (float)ScreenHeight();
+				triProjected.p[2].x *= 0.5f * (float)ScreenWidth();
+				triProjected.p[2].y *= 0.5f * (float)ScreenHeight();
+
+				DrawTriangle(triProjected.p[0].x, triProjected.p[0].y,
+					triProjected.p[1].x, triProjected.p[1].y,
+					triProjected.p[2].x, triProjected.p[2].y,
+					PIXEL_SOLID, FG_WHITE);
+			}
 		}
 
 		return true;
