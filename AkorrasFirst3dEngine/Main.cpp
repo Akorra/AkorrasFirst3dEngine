@@ -1,5 +1,9 @@
 #include "ConsoleGameEngine.h"
 
+#include <fstream>
+#include <strstream>
+#include <algorithm>
+
 struct vec3d
 {
 	float x, y, z;
@@ -16,6 +20,40 @@ struct triangle
 struct mesh
 {
 	std::vector<triangle> tris;
+
+	bool LoadFromObjectFile(std::string sFilename)
+	{
+		std::ifstream f(sFilename);
+		if (!f.is_open())
+			return false;
+
+		// Local cache of vertices
+		std::vector<vec3d> verts;
+		while (!f.eof())
+		{
+			char line[128]; // assuming file has no line with more than 128 characters
+			f.getline(line, 128);
+
+			std::strstream s;
+			s << line;
+
+			char junk;
+			if (line[0] == 'v')
+			{
+				vec3d v;
+				s >> junk >> v.x >> v.y >> v.z;
+				verts.push_back(v);
+			}
+			else if (line[0] == 'f')
+			{
+				int f[3];
+				s >> junk >> f[0] >> f[1] >> f[2];
+				tris.push_back({ verts[f[0] - 1], verts[f[1] - 1], verts[f[2] - 1] });
+			}
+		}
+
+		return true;
+	}
 };
 
 struct mat4x4
@@ -89,6 +127,7 @@ private:
 public:
 	bool OnUserCreate() override
 	{
+		/**
 		meshCube.tris = {
 			// SOUTH
 			{ 0.0f, 0.0f, 0.0f,    0.0f, 1.0f, 0.0f,    1.0f, 1.0f, 0.0f },
@@ -114,6 +153,9 @@ public:
 			{ 1.0f, 0.0f, 1.0f,    0.0f, 0.0f, 1.0f,    0.0f, 0.0f, 0.0f },
 			{ 1.0f, 0.0f, 1.0f,    0.0f, 0.0f, 0.0f,    1.0f, 0.0f, 0.0f },
 		};
+		/**/
+
+		meshCube.LoadFromObjectFile("Assets/spaceship.obj");
 
 		//Projection Matrix
 		float fNear			= 0.1f;
@@ -156,6 +198,8 @@ public:
 		matRotX.m[2][2] = cosf(fTheta * 0.5f);
 		matRotX.m[3][3] = 1;
 
+		std::vector<triangle> vecTrianglesToRaster;
+
 		// Draw Triangles
 		for (const auto& tri : meshCube.tris)
 		{
@@ -173,9 +217,9 @@ public:
 
 			// Offset into the screen
 			triTranslated = triRotatedZX;
-			triTranslated.p[0].z = triRotatedZX.p[0].z + 3.0f;
-			triTranslated.p[1].z = triRotatedZX.p[1].z + 3.0f;
-			triTranslated.p[2].z = triRotatedZX.p[2].z + 3.0f;
+			triTranslated.p[0].z = triRotatedZX.p[0].z + 8.0f;
+			triTranslated.p[1].z = triRotatedZX.p[1].z + 8.0f;
+			triTranslated.p[2].z = triRotatedZX.p[2].z + 8.0f;
 
 			vec3d normal, line1, line2;
 			line1.x = triTranslated.p[1].x - triTranslated.p[0].x;
@@ -228,16 +272,31 @@ public:
 				triProjected.p[2].x *= 0.5f * (float)ScreenWidth();
 				triProjected.p[2].y *= 0.5f * (float)ScreenHeight();
 
-				FillTriangle(triProjected.p[0].x, triProjected.p[0].y,
-					triProjected.p[1].x, triProjected.p[1].y,
-					triProjected.p[2].x, triProjected.p[2].y,
-					triProjected.sym, triProjected.col);
-
-				DrawTriangle(triProjected.p[0].x, triProjected.p[0].y,
-					triProjected.p[1].x, triProjected.p[1].y,
-					triProjected.p[2].x, triProjected.p[2].y,
-					PIXEL_SOLID, FG_CYAN);
+				// Store triangles for sorting 
+				vecTrianglesToRaster.push_back(triProjected);
 			}
+		}
+
+		std::sort(vecTrianglesToRaster.begin(), vecTrianglesToRaster.end(), [](triangle& t1, triangle& t2) 
+		{
+			float z1 = (t1.p[0].z + t1.p[1].z + t1.p[2].z) / 3.0f;
+			float z2 = (t2.p[0].z + t2.p[1].z + t2.p[2].z) / 3.0f;
+
+			return z1 > z2;
+		});
+
+		for (auto& triProjected : vecTrianglesToRaster)
+		{
+			//Rasterize triangle
+			FillTriangle(triProjected.p[0].x, triProjected.p[0].y,
+				triProjected.p[1].x, triProjected.p[1].y,
+				triProjected.p[2].x, triProjected.p[2].y,
+				triProjected.sym, triProjected.col);
+
+			//DrawTriangle(triProjected.p[0].x, triProjected.p[0].y,
+			//	triProjected.p[1].x, triProjected.p[1].y,
+			//	triProjected.p[2].x, triProjected.p[2].y,
+			//	PIXEL_SOLID, FG_CYAN);
 		}
 
 		return true;
