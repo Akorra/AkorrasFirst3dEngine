@@ -164,11 +164,10 @@ bool Engine3D::OnUserUpdate(float fElapsedTime)
 			triProjected.p[2].x, triProjected.p[2].y,
 			triProjected.sym, triProjected.col);
 
-		//DrawTriangle(triProjected.p[0].x, triProjected.p[0].y,
-		//	triProjected.p[1].x, triProjected.p[1].y,
-		//	triProjected.p[2].x, triProjected.p[2].y,
-		//	PIXEL_SOLID, FG_CYAN);
+		DrawTriangle(triProjected.p[0].x, triProjected.p[0].y,
+			triProjected.p[1].x, triProjected.p[1].y,
+			triProjected.p[2].x, triProjected.p[2].y,
+			PIXEL_SOLID, FG_CYAN);
 	}
-
 	return true;
 }
