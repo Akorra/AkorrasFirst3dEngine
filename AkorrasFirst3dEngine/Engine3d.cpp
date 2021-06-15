@@ -47,7 +47,7 @@ CHAR_INFO Engine3D::GetColour(float lum)
 
 bool Engine3D::OnUserCreate() 
 {
-	meshCube.LoadFromObjectFile("Assets/spaceship.obj");
+	meshCube.LoadFromObjectFile("Assets/teapot.obj");
 
 	//Projection Matrix
 	matProj = mat4x4::Projection(90.0f, (float)ScreenHeight() / (float)ScreenWidth(), 0.1f, 1000.0f);
