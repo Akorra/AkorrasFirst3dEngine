@@ -48,19 +48,7 @@ bool Engine3D::OnUserCreate()
 	meshCube.LoadFromObjectFile("Assets/spaceship.obj");
 
 	//Projection Matrix
-	float fNear = 0.1f;
-	float fFar = 1000.0f;
-	float fFoV = 90.0f;
-	float fAspectRatio = (float)ScreenHeight() / (float)ScreenWidth();
-	float fFoVRad = 1.0f / tanf(fFoV * 0.5f / 180.0f * 3.14159f);
-
-	matProj.m[0][0] = fAspectRatio * fFoVRad;
-	matProj.m[1][1] = fFoVRad;
-	matProj.m[2][2] = fFar / (fFar - fNear);
-	matProj.m[2][3] = 1.0f;
-	matProj.m[3][2] = (-fFar * fNear) / (fFar - fNear);
-	matProj.m[3][3] = 0.0f;
-
+	matProj = mat4x4::Projection(90.0f, (float)ScreenHeight() / (float)ScreenWidth(), 0.1f, 1000.0f);
 	return true;
 }
 
@@ -69,24 +57,13 @@ bool Engine3D::OnUserUpdate(float fElapsedTime)
 	Fill(0, 0, ScreenWidth(), ScreenHeight(), PIXEL_SOLID, FG_BLACK);
 
 	// Set up rotation matrices
-	mat4x4 matRotZ, matRotX;
 	fTheta += 1.0f * fElapsedTime;
 
 	// Rotation Z
-	matRotZ.m[0][0] = cosf(fTheta);
-	matRotZ.m[0][1] = sinf(fTheta);
-	matRotZ.m[1][0] = -sinf(fTheta);
-	matRotZ.m[1][1] = cosf(fTheta);
-	matRotZ.m[2][2] = 1;
-	matRotZ.m[3][3] = 1;
+	mat4x4 matRotZ = mat4x4::RotationZ(fTheta);
 
 	// Rotation X
-	matRotX.m[0][0] = 1;
-	matRotX.m[1][1] = cosf(fTheta * 0.5f);
-	matRotX.m[1][2] = sinf(fTheta * 0.5f);
-	matRotX.m[2][1] = -sinf(fTheta * 0.5f);
-	matRotX.m[2][2] = cosf(fTheta * 0.5f);
-	matRotX.m[3][3] = 1;
+	mat4x4 matRotX = mat4x4::RotationX(fTheta);
 
 	std::vector<triangle> vecTrianglesToRaster;
 

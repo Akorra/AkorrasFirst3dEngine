@@ -6,21 +6,17 @@
 
 struct vec3d
 {
-	union
-	{
-		struct { float x, y, z; };
-		struct { float pitch, yaw, roll; };
-		float n[3] = { 0.0f, 0.0f, 0.0f };
-	};
+	float x, y, z, w;
 
 	vec3d()
 	{
 		x = y = z = 0.0f;
+		w = 1.0f;
 	}
 
-	vec3d(float a, float b, float c)
+	vec3d(float a, float b, float c, float d=1.0f)
 	{
-		x = a; y = b; z = c;
+		x = a; y = b; z = c; w = d;
 	}
 
 	float length() const
@@ -45,9 +41,9 @@ struct vec3d
 
 	vec3d cross(const vec3d& b)
 	{
-		return { n[1] * b.n[2] - n[2] * b.n[1],
-				 n[2] * b.n[0] - n[0] * b.n[2],
-				 n[0] * b.n[1] - n[1] * b.n[0] };
+		return { y * b.z - z * b.y,
+				 z * b.x - x * b.z,
+				 x * b.y - y * b.x };
 	}
 
 	vec3d& operator+=(const vec3d& rhs)
@@ -154,17 +150,11 @@ struct mat4x4
 
 	vec3d operator*(vec3d v) {
 		vec3d o;
-		o.x = v.x * m[0][0] + v.y * m[1][0] + v.z * m[2][0] + m[3][0];
-		o.y = v.x * m[0][1] + v.y * m[1][1] + v.z * m[2][1] + m[3][1];
-		o.z = v.x * m[0][2] + v.y * m[1][2] + v.z * m[2][2] + m[3][2];
+		o.x = v.x * m[0][0] + v.y * m[1][0] + v.z * m[2][0] + v.w * m[3][0];
+		o.y = v.x * m[0][1] + v.y * m[1][1] + v.z * m[2][1] + v.w * m[3][1];
+		o.z = v.x * m[0][2] + v.y * m[1][2] + v.z * m[2][2] + v.w * m[3][2];
+		o.w = v.x * m[0][3] + v.y * m[1][3] + v.z * m[2][3] + v.w * m[3][3];
 
-		float w = v.x * m[0][3] + v.y * m[1][3] + v.z * +m[2][3] + m[3][3];
-		if (w != 0.0f)
-		{
-			o.x /= w;
-			o.y /= w;
-			o.z /= w;
-		}
 		return o;
 	}
 
@@ -188,7 +178,7 @@ struct mat4x4
 
 	static mat4x4 RotationX(const float rads)
 	{
-		mat4x4 matrix;
+		mat4x4 matrix(1.0f);
 		matrix.m[0][0] =  1.0f;
 		matrix.m[1][1] =  cosf(rads);
 		matrix.m[1][2] =  sinf(rads);
@@ -200,7 +190,7 @@ struct mat4x4
 
 	static mat4x4 RotationY(const float rads)
 	{
-		mat4x4 matrix;
+		mat4x4 matrix(1.0f);
 		matrix.m[0][0] = cosf(rads);
 		matrix.m[0][2] = sinf(rads);
 		matrix.m[2][0] = -sinf(rads);
@@ -212,7 +202,7 @@ struct mat4x4
 
 	static mat4x4 RotationZ(const float rads)
 	{
-		mat4x4 matrix;
+		mat4x4 matrix(1.0f);
 		matrix.m[0][0] = cosf(rads);
 		matrix.m[0][1] = sinf(rads);
 		matrix.m[1][0] = -sinf(rads);
@@ -234,7 +224,7 @@ struct mat4x4
 	static mat4x4 Projection(float FovDegrees, float AspectRatio, float Near, float Far)
 	{
 		float FovRad = 1.0f / tanf(FovDegrees * 0.5f / 180.0f * 3.14159f);
-		mat4x4 matrix;
+		mat4x4 matrix(1.0f);
 		matrix.m[0][0] = AspectRatio * FovRad;
 		matrix.m[1][1] = FovRad;
 		matrix.m[2][2] = Far / (Far - Near);
