@@ -6,7 +6,10 @@
 
 struct vec3d
 {
-	float x, y, z, w;
+	float x = 0.0f;
+	float y = 0.0f;
+	float z = 0.0f;
+	float w = 1.0f;
 
 	vec3d()
 	{
@@ -31,7 +34,7 @@ struct vec3d
 
 	float dot(const vec3d& b)
 	{
-		return acosf((x * b.x + y * b.y + z * b.z) / (length() * b.length()));
+		return this->x * b.x + this->y * b.y + this->z * b.z;
 	}
 
 	float prod(const vec3d& b)
@@ -41,9 +44,9 @@ struct vec3d
 
 	vec3d cross(const vec3d& b)
 	{
-		return { y * b.z - z * b.y,
-				 z * b.x - x * b.z,
-				 x * b.y - y * b.x };
+		return { this->y * b.z - this->z * b.y,
+				 this->z * b.x - this->x * b.z,
+				 this->x * b.y - this->y * b.x };
 	}
 
 	vec3d& operator+=(const vec3d& rhs)
@@ -169,7 +172,7 @@ struct mat4x4
 
 	mat4x4 operator*(mat4x4 m)
 	{
-		mat4x4 matrix;
+		mat4x4 matrix(1.0f);
 		for (int c = 0; c < 4; c++)
 			for (int r = 0; r < 4; r++)
 				matrix.m[r][c] = this->m[r][0] * m.m[0][c] + this->m[r][1] * m.m[1][c] + this->m[r][2] * m.m[2][c] + this->m[r][3] * m.m[3][c];

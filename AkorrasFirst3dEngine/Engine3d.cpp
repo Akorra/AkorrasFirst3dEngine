@@ -8,6 +8,8 @@ std::mutex ConsoleGameEngine::m_muxGame;
 Engine3D::Engine3D()
 {
 	m_sAppName = L"3D Demo";
+	vCamera = vec3d();
+
 }
 
 CHAR_INFO Engine3D::GetColour(float lum)
@@ -60,58 +62,68 @@ bool Engine3D::OnUserUpdate(float fElapsedTime)
 	fTheta += 1.0f * fElapsedTime;
 
 	// Rotation Z
-	mat4x4 matRotZ = mat4x4::RotationZ(fTheta);
+	mat4x4 matRotZ = mat4x4::RotationZ(fTheta * 0.5f);
 
 	// Rotation X
 	mat4x4 matRotX = mat4x4::RotationX(fTheta);
+
+	// Translation matrix
+	mat4x4 matTrans = mat4x4::Translation(0.0f, 0.0f, 8.0f);
+
+	// World Matrix
+	mat4x4 matWorld(1.0f);
+	matWorld = matRotZ * matRotX;		//rotate around origin
+	matWorld = matWorld * matTrans;		//translate to another location
 
 	std::vector<triangle> vecTrianglesToRaster;
 
 	// Draw Triangles
 	for (const auto& tri : meshCube.tris)
 	{
-		triangle triProjected, triTranslated;
+		triangle triProjected, triTransformed;
 
-		// Rotate in Z-Axis
-		triangle triRotatedZ = matRotZ * tri;
-
-		// Rotate in X-Axis
-		triangle triRotatedZX = matRotX * triRotatedZ;
-
-		// Offset into the screen
-		triTranslated = triRotatedZX + vec3d(0.0f, 0.0f ,8.0f);
+		triTransformed.p[0] = matWorld * tri.p[0];
+		triTransformed.p[1] = matWorld * tri.p[1];
+		triTransformed.p[2] = matWorld * tri.p[2];
 
 		vec3d normal, line1, line2;
-		line1 = triTranslated.p[1] - triTranslated.p[0];
-		line2 = triTranslated.p[2] - triTranslated.p[0];
+		line1 = triTransformed.p[1] - triTransformed.p[0];
+		line2 = triTransformed.p[2] - triTransformed.p[0];
 
 		normal = line1.cross(line2).normal();
 
-		//if (normal.z < 0)
-		if ((normal.x * triTranslated.p[0].x - vCamera.x) +
-			(normal.y * triTranslated.p[0].y - vCamera.y) +
-			(normal.z * triTranslated.p[0].z - vCamera.z) < 0.0f)
+		//cast ray from triangle to camera to see if it is visible
+		vec3d vCameraRay = triTransformed.p[0] - vCamera;
+		
+		// if ray is aligned with normal, then triangle is visible
+		if ( normal.dot(vCameraRay) < 0.0f)
 		{
 			//Ilumination
-			vec3d light_direction = { 0.0f, 0.0f, -1.0f };
-			float l = sqrt(light_direction.x * light_direction.x + light_direction.y * light_direction.y + light_direction.z * light_direction.z);
-			light_direction.x /= l; light_direction.y /= l; light_direction.z /= l;
+			vec3d light_direction = { 0.0f, 1.0f, -1.0f };
+			light_direction = light_direction.normal();
 
-			//dot product between normal of tri urface and light source
-			float dp = normal.x * light_direction.x + normal.y * light_direction.y + normal.z * light_direction.z;
+			//how aligned are light direction and triangle surface normal
+			float dp = max(0.1f, light_direction.dot(normal));
 
+			//Choose console colours as required 
 			CHAR_INFO c = GetColour(dp);
-			triTranslated.col = c.Attributes;
-			triTranslated.sym = c.Char.UnicodeChar;
+			triTransformed.col = c.Attributes;
+			triTransformed.sym = c.Char.UnicodeChar;
 
-			triProjected     = matProj*triTranslated;
-			triProjected.col = triTranslated.col;
-			triProjected.sym = triTranslated.sym;
+			triProjected     = matProj*triTransformed;
+			triProjected.col = triTransformed.col;
+			triProjected.sym = triTransformed.sym;
+
+			//normalize result due to 4th element of vector
+			triProjected.p[0] = triProjected.p[0] / triProjected.p[0].w;
+			triProjected.p[1] = triProjected.p[1] / triProjected.p[1].w;
+			triProjected.p[2] = triProjected.p[2] / triProjected.p[2].w;
 
 			//Scale into View
-			triProjected.p[0].x += 1.0f; triProjected.p[0].y += 1;
-			triProjected.p[1].x += 1.0f; triProjected.p[1].y += 1;
-			triProjected.p[2].x += 1.0f; triProjected.p[2].y += 1;
+			vec3d vOffsetView = { 1, 1, 0 };
+			triProjected.p[0] += vOffsetView;
+			triProjected.p[1] += vOffsetView;
+			triProjected.p[2] += vOffsetView;
 
 			triProjected.p[0].x *= 0.5f * (float)ScreenWidth();
 			triProjected.p[0].y *= 0.5f * (float)ScreenHeight();
@@ -141,10 +153,11 @@ bool Engine3D::OnUserUpdate(float fElapsedTime)
 			triProjected.p[2].x, triProjected.p[2].y,
 			triProjected.sym, triProjected.col);
 
-		DrawTriangle(triProjected.p[0].x, triProjected.p[0].y,
+		/*DrawTriangle(triProjected.p[0].x, triProjected.p[0].y,
 			triProjected.p[1].x, triProjected.p[1].y,
 			triProjected.p[2].x, triProjected.p[2].y,
 			PIXEL_SOLID, FG_CYAN);
+		/**/
 	}
 	return true;
 }
