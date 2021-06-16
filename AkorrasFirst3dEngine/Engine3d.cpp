@@ -47,7 +47,7 @@ CHAR_INFO Engine3D::GetColour(float lum)
 
 bool Engine3D::OnUserCreate() 
 {
-	meshCube.LoadFromObjectFile("Assets/teapot.obj");
+	meshCube.LoadFromObjectFile("Assets/axis.obj");
 
 	//Projection Matrix
 	matProj = mat4x4::Projection(90.0f, (float)ScreenHeight() / (float)ScreenWidth(), 0.1f, 1000.0f);
@@ -56,10 +56,30 @@ bool Engine3D::OnUserCreate()
 
 bool Engine3D::OnUserUpdate(float fElapsedTime) 
 {
-	Fill(0, 0, ScreenWidth(), ScreenHeight(), PIXEL_SOLID, FG_BLACK);
+	if (GetKey(VK_UP).bHeld)
+		vCamera.y += 8.0f * fElapsedTime;
+	if (GetKey(VK_DOWN).bHeld)
+		vCamera.y -= 8.0f * fElapsedTime;
+	if (GetKey(VK_LEFT).bHeld)
+		vCamera.x -= 8.0f * fElapsedTime;
+	if (GetKey(VK_RIGHT).bHeld)
+		vCamera.x += 8.0f * fElapsedTime;
 
-	// Set up rotation matrices
-	fTheta += 1.0f * fElapsedTime;
+	vec3d vForward = vLookDir * (8.0f * fElapsedTime);
+	
+	if (GetKey(L'W').bHeld)
+		vCamera += vForward;
+	if (GetKey(L'S').bHeld)
+		vCamera -= vForward;
+
+	if (GetKey(L'A').bHeld)
+		fYaw += 2.0f * fElapsedTime;
+	if (GetKey(L'D').bHeld)
+		fYaw -= 2.0f * fElapsedTime;
+
+
+	//Clear Screen
+	Fill(0, 0, ScreenWidth(), ScreenHeight(), PIXEL_SOLID, FG_BLACK);
 
 	// Rotation Z
 	mat4x4 matRotZ = mat4x4::RotationZ(fTheta * 0.5f);
@@ -68,19 +88,32 @@ bool Engine3D::OnUserUpdate(float fElapsedTime)
 	mat4x4 matRotX = mat4x4::RotationX(fTheta);
 
 	// Translation matrix
-	mat4x4 matTrans = mat4x4::Translation(0.0f, 0.0f, 8.0f);
+	mat4x4 matTrans = mat4x4::Translation(0.0f, 0.0f, 18.0f);
 
 	// World Matrix
 	mat4x4 matWorld(1.0f);
 	matWorld = matRotZ * matRotX;		//rotate around origin
 	matWorld = matWorld * matTrans;		//translate to another location
 
+	vec3d vUp     = { 0,1,0 };
+	vec3d vTarget = { 0,0,1 };
+	
+	mat4x4 matCameraRot = mat4x4::RotationY(fYaw);
+	vLookDir = matCameraRot * vTarget;
+	vTarget  = vCamera + vLookDir;
+
+
+	mat4x4 matCamera = mat4x4::PointAt(vCamera, vTarget, vUp);
+
+	// Make view Matrix from camera
+	mat4x4 matView = matCamera.Inverse();
+
 	std::vector<triangle> vecTrianglesToRaster;
 
 	// Draw Triangles
 	for (const auto& tri : meshCube.tris)
 	{
-		triangle triProjected, triTransformed;
+		triangle triProjected, triTransformed, triViewed;
 
 		triTransformed.p[0] = matWorld * tri.p[0];
 		triTransformed.p[1] = matWorld * tri.p[1];
@@ -90,7 +123,7 @@ bool Engine3D::OnUserUpdate(float fElapsedTime)
 		line1 = triTransformed.p[1] - triTransformed.p[0];
 		line2 = triTransformed.p[2] - triTransformed.p[0];
 
-		normal = line1.cross(line2).normal();
+		normal = line1.cross(line2).normalise();
 
 		//cast ray from triangle to camera to see if it is visible
 		vec3d vCameraRay = triTransformed.p[0] - vCamera;
@@ -100,7 +133,7 @@ bool Engine3D::OnUserUpdate(float fElapsedTime)
 		{
 			//Ilumination
 			vec3d light_direction = { 0.0f, 1.0f, -1.0f };
-			light_direction = light_direction.normal();
+			light_direction = light_direction.normalise();
 
 			//how aligned are light direction and triangle surface normal
 			float dp = max(0.1f, light_direction.dot(normal));
@@ -110,30 +143,45 @@ bool Engine3D::OnUserUpdate(float fElapsedTime)
 			triTransformed.col = c.Attributes;
 			triTransformed.sym = c.Char.UnicodeChar;
 
-			triProjected     = matProj*triTransformed;
-			triProjected.col = triTransformed.col;
-			triProjected.sym = triTransformed.sym;
+			//Convert worls space to viewed space
+			triViewed = matView * triTransformed;
+			triViewed.col = triTransformed.col;
+			triViewed.sym = triTransformed.sym;
 
-			//normalize result due to 4th element of vector
-			triProjected.p[0] = triProjected.p[0] / triProjected.p[0].w;
-			triProjected.p[1] = triProjected.p[1] / triProjected.p[1].w;
-			triProjected.p[2] = triProjected.p[2] / triProjected.p[2].w;
+			// Clip Viewd Triangle against near plane
+			triangle clipped[2];
+			int nClippedTriangles = ClipTriangleAgainstPlane({ 0.0f, 0.0f, 0.1f }, { 0.0f, 0.0f, 1.0f }, triViewed, clipped[0], clipped[1]);
+		
+			for (int n = 0; n < nClippedTriangles; n++)
+			{
+				// Project Triangles from 3D --> 2D
+				triProjected.p[0] = matProj * clipped[n].p[0];
+				triProjected.p[1] = matProj * clipped[n].p[1];
+				triProjected.p[2] = matProj * clipped[n].p[2];
+				triProjected.col = clipped[0].col;
+				triProjected.sym = clipped[0].sym;
 
-			//Scale into View
-			vec3d vOffsetView = { 1, 1, 0 };
-			triProjected.p[0] += vOffsetView;
-			triProjected.p[1] += vOffsetView;
-			triProjected.p[2] += vOffsetView;
+				//normalize result due to 4th element of vector
+				triProjected.p[0] = triProjected.p[0] / triProjected.p[0].w;
+				triProjected.p[1] = triProjected.p[1] / triProjected.p[1].w;
+				triProjected.p[2] = triProjected.p[2] / triProjected.p[2].w;
 
-			triProjected.p[0].x *= 0.5f * (float)ScreenWidth();
-			triProjected.p[0].y *= 0.5f * (float)ScreenHeight();
-			triProjected.p[1].x *= 0.5f * (float)ScreenWidth();
-			triProjected.p[1].y *= 0.5f * (float)ScreenHeight();
-			triProjected.p[2].x *= 0.5f * (float)ScreenWidth();
-			triProjected.p[2].y *= 0.5f * (float)ScreenHeight();
+				//Scale into View
+				vec3d vOffsetView = { 1, 1, 0 };
+				triProjected.p[0] += vOffsetView;
+				triProjected.p[1] += vOffsetView;
+				triProjected.p[2] += vOffsetView;
 
-			// Store triangles for sorting 
-			vecTrianglesToRaster.push_back(triProjected);
+				triProjected.p[0].x *= 0.5f * (float)ScreenWidth();
+				triProjected.p[0].y *= 0.5f * (float)ScreenHeight();
+				triProjected.p[1].x *= 0.5f * (float)ScreenWidth();
+				triProjected.p[1].y *= 0.5f * (float)ScreenHeight();
+				triProjected.p[2].x *= 0.5f * (float)ScreenWidth();
+				triProjected.p[2].y *= 0.5f * (float)ScreenHeight();
+
+				// Store triangles for sorting 
+				vecTrianglesToRaster.push_back(triProjected);
+			}
 		}
 	}
 
@@ -153,7 +201,7 @@ bool Engine3D::OnUserUpdate(float fElapsedTime)
 			triProjected.p[2].x, triProjected.p[2].y,
 			triProjected.sym, triProjected.col);
 
-		/*DrawTriangle(triProjected.p[0].x, triProjected.p[0].y,
+		DrawTriangle(triProjected.p[0].x, triProjected.p[0].y,
 			triProjected.p[1].x, triProjected.p[1].y,
 			triProjected.p[2].x, triProjected.p[2].y,
 			PIXEL_SOLID, FG_CYAN);

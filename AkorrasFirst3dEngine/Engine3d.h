@@ -10,8 +10,10 @@ private:
 	mesh	meshCube;
 	mat4x4	matProj;
 	vec3d	vCamera;
+	vec3d   vLookDir;
 
 	float	fTheta;
+	float	fYaw;
 
 	// Taken From Command Line Webcam Video
 	CHAR_INFO GetColour(float lum);
