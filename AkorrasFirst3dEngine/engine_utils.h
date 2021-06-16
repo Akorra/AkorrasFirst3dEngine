@@ -405,7 +405,7 @@ static int ClipTriangleAgainstPlane(vec3d plane_p, vec3d plane_n, triangle& in_t
 		// the plane, the triangle simply becomes a smaller triangle
 
 		// Copy appearance info to new triangle
-		out_tri1.col = FG_RED; //in_tri.col;
+		out_tri1.col = in_tri.col;
 		out_tri1.sym = in_tri.sym;
 
 		// The inside point is valid, so keep that...
@@ -426,10 +426,10 @@ static int ClipTriangleAgainstPlane(vec3d plane_p, vec3d plane_n, triangle& in_t
 		// represent a quad with two new triangles
 
 		// Copy appearance info to new triangles
-		out_tri1.col = FG_GREEN; //in_tri.col;
+		out_tri1.col = in_tri.col;
 		out_tri1.sym = in_tri.sym;
 
-		out_tri2.col = FG_BLUE;//in_tri.col;
+		out_tri2.col = in_tri.col;
 		out_tri2.sym = in_tri.sym;
 
 		// The first triangle consists of the two inside points and a new

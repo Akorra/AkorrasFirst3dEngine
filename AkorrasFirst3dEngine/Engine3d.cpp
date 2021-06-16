@@ -1,4 +1,5 @@
 #include "Engine3d.h"
+#include <omp.h>
 
 // Define our static variables
 std::atomic<bool> ConsoleGameEngine::m_bAtomActive(false);
@@ -47,7 +48,7 @@ CHAR_INFO Engine3D::GetColour(float lum)
 
 bool Engine3D::OnUserCreate() 
 {
-	meshCube.LoadFromObjectFile("Assets/axis.obj");
+	meshCube.LoadFromObjectFile("Assets/teapot.obj");
 
 	//Projection Matrix
 	matProj = mat4x4::Projection(90.0f, (float)ScreenHeight() / (float)ScreenWidth(), 0.1f, 1000.0f);
@@ -56,16 +57,17 @@ bool Engine3D::OnUserCreate()
 
 bool Engine3D::OnUserUpdate(float fElapsedTime) 
 {
+	vec3d vForward = vLookDir * (8.0f * fElapsedTime);
+	vec3d vRight = vLookDir.normalise().cross({0,1,0}) * (8.0f * fElapsedTime);
+
 	if (GetKey(VK_UP).bHeld)
 		vCamera.y += 8.0f * fElapsedTime;
 	if (GetKey(VK_DOWN).bHeld)
 		vCamera.y -= 8.0f * fElapsedTime;
 	if (GetKey(VK_LEFT).bHeld)
-		vCamera.x -= 8.0f * fElapsedTime;
+		vCamera -= vRight; 
 	if (GetKey(VK_RIGHT).bHeld)
-		vCamera.x += 8.0f * fElapsedTime;
-
-	vec3d vForward = vLookDir * (8.0f * fElapsedTime);
+		vCamera += vRight;
 	
 	if (GetKey(L'W').bHeld)
 		vCamera += vForward;
@@ -73,9 +75,9 @@ bool Engine3D::OnUserUpdate(float fElapsedTime)
 		vCamera -= vForward;
 
 	if (GetKey(L'A').bHeld)
-		fYaw += 2.0f * fElapsedTime;
-	if (GetKey(L'D').bHeld)
 		fYaw -= 2.0f * fElapsedTime;
+	if (GetKey(L'D').bHeld)
+		fYaw += 2.0f * fElapsedTime;
 
 	fTheta = 0.0f;
 
@@ -86,7 +88,7 @@ bool Engine3D::OnUserUpdate(float fElapsedTime)
 	mat4x4 matRotX = mat4x4::RotationX(fTheta);
 
 	// Translation matrix
-	mat4x4 matTrans = mat4x4::Translation(0.0f, 0.0f, 18.0f);
+	mat4x4 matTrans = mat4x4::Translation(0.0f, 0.0f, 5.0f);
 
 	// World Matrix
 	mat4x4 matWorld(1.0f);
@@ -204,6 +206,7 @@ bool Engine3D::OnUserUpdate(float fElapsedTime)
 	//Clear Screen
 	Fill(0, 0, ScreenWidth(), ScreenHeight(), PIXEL_SOLID, FG_BLACK);
 
+	#pragma omp parallel for
 	for (auto& triToRaster : vecTrianglesToRaster)
 	{
 		// Clip Triangles against all four screen edges, this could yield many triangles
