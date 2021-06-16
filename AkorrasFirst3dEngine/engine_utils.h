@@ -31,17 +31,16 @@ struct vec3d
 
 	vec3d normalise()
 	{
-		return *this / length();
+		float l = length();
+		if (l == 0)
+			return *this;
+
+		return *this / l;
 	}
 
 	float dot(const vec3d& b)
 	{
 		return this->x * b.x + this->y * b.y + this->z * b.z;
-	}
-
-	float prod(const vec3d& b)
-	{
-		return (x * b.x + y * b.y + z * b.z);
 	}
 
 	vec3d cross(const vec3d& b)
@@ -183,7 +182,7 @@ struct mat4x4
 
 	mat4x4 operator*(mat4x4 m)
 	{
-		mat4x4 matrix(1.0f);
+		mat4x4 matrix(0.0f);
 		for (int c = 0; c < 4; c++)
 			for (int r = 0; r < 4; r++)
 				matrix.m[r][c] = this->m[r][0] * m.m[0][c] + this->m[r][1] * m.m[1][c] + this->m[r][2] * m.m[2][c] + this->m[r][3] * m.m[3][c];
@@ -209,7 +208,7 @@ struct mat4x4
 
 	static mat4x4 RotationX(const float rads)
 	{
-		mat4x4 matrix(1.0f);
+		mat4x4 matrix(0.0f);
 		matrix.m[0][0] =  1.0f;
 		matrix.m[1][1] =  cosf(rads);
 		matrix.m[1][2] =  sinf(rads);
@@ -221,7 +220,7 @@ struct mat4x4
 
 	static mat4x4 RotationY(const float rads)
 	{
-		mat4x4 matrix(1.0f);
+		mat4x4 matrix(0.0f);
 		matrix.m[0][0] = cosf(rads);
 		matrix.m[0][2] = sinf(rads);
 		matrix.m[2][0] = -sinf(rads);
@@ -233,7 +232,7 @@ struct mat4x4
 
 	static mat4x4 RotationZ(const float rads)
 	{
-		mat4x4 matrix(1.0f);
+		mat4x4 matrix(0.0f);
 		matrix.m[0][0] = cosf(rads);
 		matrix.m[0][1] = sinf(rads);
 		matrix.m[1][0] = -sinf(rads);
@@ -255,7 +254,7 @@ struct mat4x4
 	static mat4x4 Projection(float FovDegrees, float AspectRatio, float Near, float Far)
 	{
 		float FovRad = 1.0f / tanf(FovDegrees * 0.5f / 180.0f * 3.14159f);
-		mat4x4 matrix(1.0f);
+		mat4x4 matrix(0.0f);
 		matrix.m[0][0] = AspectRatio * FovRad;
 		matrix.m[1][1] = FovRad;
 		matrix.m[2][2] = Far / (Far - Near);
@@ -354,7 +353,6 @@ static int ClipTriangleAgainstPlane(vec3d plane_p, vec3d plane_n, triangle& in_t
 	// Return signed shortest distance from point to plane, plane normal must be normalised
 	auto dist = [&](vec3d& p)
 	{
-		vec3d n = p.normalise();
 		return (plane_n.x * p.x + plane_n.y * p.y + plane_n.z * p.z - plane_n.dot(plane_p));
 	};
 
@@ -407,7 +405,7 @@ static int ClipTriangleAgainstPlane(vec3d plane_p, vec3d plane_n, triangle& in_t
 		// the plane, the triangle simply becomes a smaller triangle
 
 		// Copy appearance info to new triangle
-		out_tri1.col = in_tri.col;
+		out_tri1.col = FG_RED; //in_tri.col;
 		out_tri1.sym = in_tri.sym;
 
 		// The inside point is valid, so keep that...
@@ -428,10 +426,10 @@ static int ClipTriangleAgainstPlane(vec3d plane_p, vec3d plane_n, triangle& in_t
 		// represent a quad with two new triangles
 
 		// Copy appearance info to new triangles
-		out_tri1.col = in_tri.col;
+		out_tri1.col = FG_GREEN; //in_tri.col;
 		out_tri1.sym = in_tri.sym;
 
-		out_tri2.col = in_tri.col;
+		out_tri2.col = FG_BLUE;//in_tri.col;
 		out_tri2.sym = in_tri.sym;
 
 		// The first triangle consists of the two inside points and a new

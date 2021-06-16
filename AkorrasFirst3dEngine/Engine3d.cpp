@@ -77,9 +77,7 @@ bool Engine3D::OnUserUpdate(float fElapsedTime)
 	if (GetKey(L'D').bHeld)
 		fYaw -= 2.0f * fElapsedTime;
 
-
-	//Clear Screen
-	Fill(0, 0, ScreenWidth(), ScreenHeight(), PIXEL_SOLID, FG_BLACK);
+	fTheta = 0.0f;
 
 	// Rotation Z
 	mat4x4 matRotZ = mat4x4::RotationZ(fTheta * 0.5f);
@@ -144,13 +142,16 @@ bool Engine3D::OnUserUpdate(float fElapsedTime)
 			triTransformed.sym = c.Char.UnicodeChar;
 
 			//Convert worls space to viewed space
-			triViewed = matView * triTransformed;
+			triViewed.p[0] = matView * triTransformed.p[0];
+			triViewed.p[1] = matView * triTransformed.p[1];
+			triViewed.p[2] = matView * triTransformed.p[2];
 			triViewed.col = triTransformed.col;
 			triViewed.sym = triTransformed.sym;
 
 			// Clip Viewd Triangle against near plane
+			int nClippedTriangles = 0;
 			triangle clipped[2];
-			int nClippedTriangles = ClipTriangleAgainstPlane({ 0.0f, 0.0f, 0.1f }, { 0.0f, 0.0f, 1.0f }, triViewed, clipped[0], clipped[1]);
+			nClippedTriangles = ClipTriangleAgainstPlane({ 0.0f, 0.0f, 0.1f }, { 0.0f, 0.0f, 1.0f }, triViewed, clipped[0], clipped[1]);
 		
 			for (int n = 0; n < nClippedTriangles; n++)
 			{
@@ -158,13 +159,21 @@ bool Engine3D::OnUserUpdate(float fElapsedTime)
 				triProjected.p[0] = matProj * clipped[n].p[0];
 				triProjected.p[1] = matProj * clipped[n].p[1];
 				triProjected.p[2] = matProj * clipped[n].p[2];
-				triProjected.col = clipped[0].col;
-				triProjected.sym = clipped[0].sym;
+				triProjected.col = clipped[n].col;
+				triProjected.sym = clipped[n].sym;
 
 				//normalize result due to 4th element of vector
 				triProjected.p[0] = triProjected.p[0] / triProjected.p[0].w;
 				triProjected.p[1] = triProjected.p[1] / triProjected.p[1].w;
 				triProjected.p[2] = triProjected.p[2] / triProjected.p[2].w;
+
+				// X/Y are inverted so put them back
+				triProjected.p[0].x *= -1.0f;
+				triProjected.p[1].x *= -1.0f;
+				triProjected.p[2].x *= -1.0f;
+				triProjected.p[0].y *= -1.0f;
+				triProjected.p[1].y *= -1.0f;
+				triProjected.p[2].y *= -1.0f;
 
 				//Scale into View
 				vec3d vOffsetView = { 1, 1, 0 };
@@ -186,26 +195,53 @@ bool Engine3D::OnUserUpdate(float fElapsedTime)
 	}
 
 	std::sort(vecTrianglesToRaster.begin(), vecTrianglesToRaster.end(), [](triangle& t1, triangle& t2)
-		{
-			float z1 = (t1.p[0].z + t1.p[1].z + t1.p[2].z) / 3.0f;
-			float z2 = (t2.p[0].z + t2.p[1].z + t2.p[2].z) / 3.0f;
-
-			return z1 > z2;
-		});
-
-	for (auto& triProjected : vecTrianglesToRaster)
 	{
-		//Rasterize triangle
-		FillTriangle(triProjected.p[0].x, triProjected.p[0].y,
-			triProjected.p[1].x, triProjected.p[1].y,
-			triProjected.p[2].x, triProjected.p[2].y,
-			triProjected.sym, triProjected.col);
+		float z1 = (t1.p[0].z + t1.p[1].z + t1.p[2].z) / 3.0f;
+		float z2 = (t2.p[0].z + t2.p[1].z + t2.p[2].z) / 3.0f;
+		return z1 > z2;
+	});
 
-		DrawTriangle(triProjected.p[0].x, triProjected.p[0].y,
-			triProjected.p[1].x, triProjected.p[1].y,
-			triProjected.p[2].x, triProjected.p[2].y,
-			PIXEL_SOLID, FG_CYAN);
-		/**/
+	//Clear Screen
+	Fill(0, 0, ScreenWidth(), ScreenHeight(), PIXEL_SOLID, FG_BLACK);
+
+	for (auto& triToRaster : vecTrianglesToRaster)
+	{
+		// Clip Triangles against all four screen edges, this could yield many triangles
+		triangle clipped[2];
+		std::list<triangle> listTriangles;
+
+		listTriangles.push_back(triToRaster);
+		int nNewTriangles = 1;
+
+		for (int p = 0; p < 4; p++)
+		{
+			int nTrisToAdd = 0;
+			while (nNewTriangles > 0)
+			{
+				triangle test = listTriangles.front();
+				listTriangles.pop_front();
+				nNewTriangles--;
+
+				switch(p)
+				{
+				case 0: nTrisToAdd = ClipTriangleAgainstPlane({ 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f }, test, clipped[0], clipped[1]); break; //bottom view plane
+				case 1: nTrisToAdd = ClipTriangleAgainstPlane({ 0.0f, (float)ScreenHeight()-1, 0.0f }, { 0.0f, -1.0f, 0.0f }, test, clipped[0], clipped[1]); break; //top view plane
+				case 2: nTrisToAdd = ClipTriangleAgainstPlane({ 0.0f, 0.0f, 0.0f }, { 1.0f, 0.0f, 0.0f }, test, clipped[0], clipped[1]); break;
+				case 3: nTrisToAdd = ClipTriangleAgainstPlane({ (float)ScreenWidth()-1, 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f }, test, clipped[0], clipped[1]); break;
+				}
+
+				for (int w = 0; w < nTrisToAdd; w++)
+					listTriangles.push_back(clipped[w]);
+			}
+
+			nNewTriangles = listTriangles.size();
+
+			for (auto& t : listTriangles)
+			{
+				//Rasterize triangle
+				FillTriangle(t.p[0].x, t.p[0].y, t.p[1].x, t.p[1].y, t.p[2].x, t.p[2].y, t.sym, t.col);
+			}
+		}		
 	}
 	return true;
 }
