@@ -1,5 +1,4 @@
 #include "Engine3d.h"
-#include <omp.h>
 
 // Define our static variables
 std::atomic<bool> ConsoleGameEngine::m_bAtomActive(false);
@@ -206,7 +205,6 @@ bool Engine3D::OnUserUpdate(float fElapsedTime)
 	//Clear Screen
 	Fill(0, 0, ScreenWidth(), ScreenHeight(), PIXEL_SOLID, FG_BLACK);
 
-	#pragma omp parallel for
 	for (auto& triToRaster : vecTrianglesToRaster)
 	{
 		// Clip Triangles against all four screen edges, this could yield many triangles
